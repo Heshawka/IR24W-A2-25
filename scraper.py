@@ -1,5 +1,6 @@
 import re
 from urllib.parse import urlparse
+from bs4 import BeautifulSoup
 
 def scraper(url, resp):
     links = extract_next_links(url, resp)
@@ -7,7 +8,7 @@ def scraper(url, resp):
 
 def extract_next_links(url, resp):
     # Implementation required.
-    # url: the URL that was used to get the page
+    # url: the URL that ds used to get the page
     # resp.url: the actual url of the page
     # resp.status: the status code returned by the server. 200 is OK, you got the page. Other numbers mean that there was some kind of problem.
     # resp.error: when status is not 200, you can check the error here, if needed.
@@ -15,7 +16,18 @@ def extract_next_links(url, resp):
     #         resp.raw_response.url: the url, again
     #         resp.raw_response.content: the content of the page!
     # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
-    return list()
+    scraped_links = []
+
+    if not resp.raw_response:
+        return []
+
+    soup = BeautifulSoup(resp.raw_response.content, "html.parser")
+    link_elems = soup.select("a[href]")
+
+    for link_elem in link_elems:
+        scraped_links.append(link_elem['href'])
+
+    return scraped_links
 
 def is_valid(url):
     # Decide whether to crawl this url or not. 
@@ -25,6 +37,17 @@ def is_valid(url):
         parsed = urlparse(url)
         if parsed.scheme not in set(["http", "https"]):
             return False
+
+        allowed_domains = [
+            "www.ics.uci.edu",
+            "www.cs.uci.edu",
+            "www.informatics.uci.edu",
+            "www.stat.uci.edu"
+        ]
+        #domain check
+        if not any(domain in parsed.netloc for domain in allowed_domains):
+            return False
+
         return not re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
             + r"|png|tiff?|mid|mp2|mp3|mp4"
@@ -34,6 +57,8 @@ def is_valid(url):
             + r"|epub|dll|cnf|tgz|sha1"
             + r"|thmx|mso|arff|rtf|jar|csv"
             + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower())
+
+
 
     except TypeError:
         print ("TypeError for ", parsed)
