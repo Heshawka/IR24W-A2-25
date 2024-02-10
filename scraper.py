@@ -1,11 +1,15 @@
 import re
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
+from crawler.info import Info as info
 
 def scraper(url, resp):
     links = extract_next_links(url, resp)
-    return [link for link in links if is_valid(link)]
 
+    if links:
+        return [link for link in links if is_valid(link)]
+    else:
+        return []
 def extract_next_links(url, resp):
     # Implementation required.
     # url: the URL that ds used to get the page
@@ -16,11 +20,20 @@ def extract_next_links(url, resp):
     #         resp.raw_response.url: the url, again
     #         resp.raw_response.content: the content of the page!
     # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
+
+    #initializing empty list for scraped links
     scraped_links = []
 
+    #if page content does not exist, return empty list
     if not resp.raw_response:
         return []
 
+    #checks for 204 (no-content success), error codes, if url is blacklisted or already scraped
+    if (resp.status == 204 or resp.status >= 400) or (url in info.scraped_urls) or (url in info.blacklisted_urls):
+        #info.blacklisted_urls.add(url)
+        return []
+
+    #getting links from url content
     soup = BeautifulSoup(resp.raw_response.content, "html.parser")
     link_elems = soup.select("a[href]")
 
@@ -38,17 +51,16 @@ def is_valid(url):
         if parsed.scheme not in set(["http", "https"]):
             return False
 
-        allowed_domains = [
-            "www.ics.uci.edu",
-            "www.cs.uci.edu",
-            "www.informatics.uci.edu",
-            "www.stat.uci.edu"
-        ]
         #domain check
-        if not any(domain in parsed.netloc for domain in allowed_domains):
+        if not re.match(
+            r'^(\w*.)(ics.uci.edu|cs.uci.edu|informatics.uci.edu|stat.uci.edu)$',
+            parsed.netloc):
             return False
 
-        return not re.match(
+        if "pdf" in url:
+            return False
+
+        if re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
             + r"|png|tiff?|mid|mp2|mp3|mp4"
             + r"|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf"
@@ -56,8 +68,11 @@ def is_valid(url):
             + r"|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso"
             + r"|epub|dll|cnf|tgz|sha1"
             + r"|thmx|mso|arff|rtf|jar|csv"
-            + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower())
+            + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower()):
+            return False
 
+        #info.unique_urls.add(parsed.netloc)
+        return True
 
 
     except TypeError:

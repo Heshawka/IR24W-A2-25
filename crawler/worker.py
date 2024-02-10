@@ -5,7 +5,6 @@ from utils.download import download
 from utils import get_logger
 import scraper
 import time
-from urllib.parse import urlparse
 
 
 class Worker(Thread):
@@ -19,27 +18,12 @@ class Worker(Thread):
         super().__init__(daemon=True)
         
     def run(self):
-        #initializing a dict with domains and the time they're accessed
-        domain_access_times = {}
+
         while True:
             tbd_url = self.frontier.get_tbd_url()
             if not tbd_url:
                 self.logger.info("Frontier is empty. Stopping Crawler.")
                 break
-
-            #getting domain
-            url_split = urlparse(tbd_url).netloc.split('.')
-            domain = '.'.join(url_split[-3:])
-            print("IN THIS DOMAIN: " + domain)
-
-            #sleeps for .5 secs if domain has been seen in last half second
-            if domain in domain_access_times and (time.time() - domain_access_times[domain] < .5):
-                print("!!!WE ARE SLEEPING!!!")
-                time.sleep(.5)
-
-            #store url in domain_access_times dict
-            domain_access_times[domain] = time.time()
-
             resp = download(tbd_url, self.config, self.logger)
             self.logger.info(
                 f"Downloaded {tbd_url}, status <{resp.status}>, "
