@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 from crawler.info import Info as info
 
 def scraper(url, resp):
+
     links = extract_next_links(url, resp)
 
     if links:
@@ -21,16 +22,18 @@ def extract_next_links(url, resp):
     #         resp.raw_response.content: the content of the page!
     # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
 
-    #initializing empty list for scraped links
-    scraped_links = []
+    # initializing instance of info class to keep track of data (only does this once)
+    info_collection = info()
+    #initializing empty list for found links
+    links = []
 
     #if page content does not exist, return empty list
     if not resp.raw_response:
         return []
 
     #checks for 204 (no-content success), error codes, if url is blacklisted or already scraped -> doesn't scrape this page
-    if (resp.status == 204 or resp.status >= 400) or (url in info.scraped_urls) or (url in info.blacklisted_urls):
-        #info.blacklisted_urls.add(url)
+    if (resp.status == 204 or resp.status >= 400) or (url in info_collection.scraped_urls) or (url in info_collection.blacklisted_urls):
+        info_collection.blacklisted_urls.add(url)
         return []
 
     #getting links from url content
@@ -42,14 +45,24 @@ def extract_next_links(url, resp):
         if href:
             #converting to abs urls
             abs_url = urljoin(url, href)
-            scraped_links.append(abs_url)
 
-    return scraped_links
+            if abs_url not in info_collection.seen_urls:
+                links.append(abs_url)
+                info_collection.seen_urls.add(abs_url)
+
+
+    #url has been fully scraped
+    info_collection.scraped_urls.add(url)
+    return links
 
 def is_valid(url):
     # Decide whether to crawl this url or not. 
     # If you decide to crawl it, return True; otherwise return False.
     # There are already some conditions that return False.
+
+    # initializing instance of info class to keep track of data (only does this once)
+    info_collection = info()
+
     try:
         parsed = urlparse(url)
         if parsed.scheme not in set(["http", "https"]):
@@ -64,6 +77,9 @@ def is_valid(url):
         if "pdf" in url:
             return False
 
+        if "#comment" in url or "#comments" in url:
+            return False
+
         if re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
             + r"|png|tiff?|mid|mp2|mp3|mp4"
@@ -72,10 +88,10 @@ def is_valid(url):
             + r"|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso"
             + r"|epub|dll|cnf|tgz|sha1"
             + r"|thmx|mso|arff|rtf|jar|csv"
-            + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower()):
+            + r"|rm|smil|wmv|swf|wma|zip|rar|gz|bib)$", parsed.path.lower()):
             return False
 
-        #info.unique_urls.add(parsed.netloc)
+        info_collection.unique_urls.add(parsed.netloc)
         return True
 
 
