@@ -1,5 +1,5 @@
 import re
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 from crawler.info import Info as info
 
@@ -28,7 +28,7 @@ def extract_next_links(url, resp):
     if not resp.raw_response:
         return []
 
-    #checks for 204 (no-content success), error codes, if url is blacklisted or already scraped
+    #checks for 204 (no-content success), error codes, if url is blacklisted or already scraped -> doesn't scrape this page
     if (resp.status == 204 or resp.status >= 400) or (url in info.scraped_urls) or (url in info.blacklisted_urls):
         #info.blacklisted_urls.add(url)
         return []
@@ -38,7 +38,11 @@ def extract_next_links(url, resp):
     link_elems = soup.select("a[href]")
 
     for link_elem in link_elems:
-        scraped_links.append(link_elem['href'])
+        href = link_elem.get("href")
+        if href:
+            #converting to abs urls
+            abs_url = urljoin(url, href)
+            scraped_links.append(abs_url)
 
     return scraped_links
 
