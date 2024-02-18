@@ -4,7 +4,8 @@ from bs4 import BeautifulSoup, Comment
 from crawler.info import Info as info
 
 #lower bound of 1000 chars for each webpage
-lower_text_bound = 1000
+lower_text_bound = 1500
+upper_text_bound = 200000
 
 #simhash_threshold
 simhash_threshold = 5
@@ -78,7 +79,7 @@ def extract_next_links(url, resp):
     space_delimited_text = re.sub(r'\s+', ' ', webtext)
 
     #if text is less than 1000 chars, blacklist and return empty list
-    if len(space_delimited_text) < lower_text_bound:
+    if (len(space_delimited_text) < lower_text_bound) or (len(space_delimited_text) > upper_text_bound):
         info_collection.blacklisted_urls.add(url)
         return []
 
